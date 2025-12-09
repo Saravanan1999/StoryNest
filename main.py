@@ -1,4 +1,5 @@
 import os
+from dotenv import load_dotenv
 import openai
 
 """
@@ -7,7 +8,9 @@ Before submitting the assignment, describe here in a few sentences what you woul
 """
 
 def call_model(prompt: str, max_tokens=3000, temperature=0.1) -> str:
-    openai.api_key = os.getenv("OPENAI_API_KEY") # please use your own openai api key here.
+    # Load environment variables from a .env file (if present)
+    load_dotenv()
+    openai.api_key = os.getenv("OPENAI_API_KEY")  # please use your own openai api key here.
     resp = openai.ChatCompletion.create(
         model="gpt-3.5-turbo",
         messages=[{"role": "user", "content": prompt}],
