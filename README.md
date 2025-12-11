@@ -122,7 +122,6 @@ To see file-by-file coverage for the `storynest` package and `main.py`:
 pytest --cov=storynest --cov=main --cov-report=term-missing
 ```
 
-At the time of writing, the core StoryNest modules are covered at roughly **98%+** line coverage (with `pipeline.py`, `config.py`, and `prompts.py` at 100%).
 
 ## Next steps (for the assignment)
 
