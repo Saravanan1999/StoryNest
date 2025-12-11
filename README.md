@@ -69,6 +69,45 @@ What kind of story do you want to hear?
 
 Type a description (for example: `A cozy mystery in a small seaside town`) and press Enter to generate a story.
 
+## StoryNest architecture (high level)
+
+- **Package layout**
+  - `storynest/pipeline.py`: multi-agent orchestration (`StoryNest` class, `generate_bedtime_story`).
+  - `storynest/prompts.py`: prompt builder helpers for each agent.
+  - `storynest/config.py`: `StoryNestConfig` and per-agent settings (tokens, temperatures, thresholds).
+  - `storynest/llm_client.py`: OpenAI + dotenv wiring and error handling.
+  - `storynest/eval.py`: offline evaluation helpers.
+- **Agents**
+  - SafetyGuard → Story Planner → Story Generator → Judge (+ Refinement loop).
+  - Logging at `INFO` level traces each step and LLM call.
+
+## Offline eval / experiments (optional)
+
+You can run lightweight offline evaluations and experiments from a Python shell or notebook:
+
+```python
+from storynest import StoryNestConfig, run_offline_eval, write_eval_results_jsonl
+
+prompts = [
+    "A gentle bedtime story about a kid who is nervous about starting school.",
+    "A magical adventure in a friendly forest.",
+]
+
+config = StoryNestConfig(min_score=8.0, max_iterations=1)
+results = run_offline_eval(prompts, config=config)
+write_eval_results_jsonl(results, "evals/storynest_results.jsonl")
+```
+
+This will generate stories, have the Judge agent score them, and write structured outputs for further analysis.
+
+Or, to run the bundled eval suite in one go:
+
+```bash
+python run_eval.py
+```
+
+This runs a small set of example prompts and writes results to `evals/storynest_results.jsonl`.
+
 ## Next steps (for the assignment)
 
 Before submitting the assignment, fill in the comment block at the top of `main.py` with a brief description of what you would have built next if you had 2 more hours to work on this project.
