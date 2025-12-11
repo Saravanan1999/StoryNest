@@ -1,7 +1,11 @@
+import logging
 import re
 from typing import Tuple
 
 from .llm_client import call_model
+
+
+logger = logging.getLogger(__name__)
 
 
 class StoryNest:
@@ -41,16 +45,34 @@ class StoryNest:
         """
         Execute the full multi-agent pipeline to produce a final story.
         """
+        logger.info("StoryNest pipeline started")
+        logger.info("User request received")
+
         safe_request = self.run_safety_guard(user_request)
+        logger.info("SafetyGuard agent completed")
+
         story_plan = self.run_story_planner(safe_request)
+        logger.info("Story Planner agent completed")
+
         story = self.run_story_generator(safe_request, story_plan)
+        logger.info("Story Generator agent completed")
 
-        for _ in range(self.max_iterations):
+        for iteration in range(self.max_iterations):
+            logger.info("Judge iteration %d started", iteration + 1)
             overall_score, feedback = self.run_judge(safe_request, story_plan, story)
-            if overall_score >= self.min_score:
-                break
-            story = self.run_refinement(safe_request, story_plan, story, feedback)
+            logger.info("Judge score after iteration %d: %.2f", iteration + 1, overall_score)
 
+            if overall_score >= self.min_score:
+                logger.info(
+                    "Score threshold reached (>= %.2f); stopping refinement loop", self.min_score
+                )
+                break
+
+            logger.info("Refinement iteration %d started", iteration + 1)
+            story = self.run_refinement(safe_request, story_plan, story, feedback)
+            logger.info("Refinement iteration %d completed", iteration + 1)
+
+        logger.info("StoryNest pipeline finished")
         return story
 
 
@@ -72,7 +94,10 @@ Return ONLY the final, safe request text, with no explanations.
 Original request:
 {user_request}
 """
-    return call_model(prompt, max_tokens=200, temperature=0.1).strip()
+    logger.info("Calling SafetyGuard agent")
+    result = call_model(prompt, max_tokens=200, temperature=0.1).strip()
+    logger.info("SafetyGuard agent returned text of length %d", len(result))
+    return result
 
 
 def run_story_planner(safe_request: str) -> str:
@@ -97,7 +122,10 @@ Write in simple English that another model can easily follow.
 SAFE_REQUEST:
 {safe_request}
 """
-    return call_model(prompt, max_tokens=400, temperature=0.5).strip()
+    logger.info("Calling Story Planner agent")
+    result = call_model(prompt, max_tokens=400, temperature=0.5).strip()
+    logger.info("Story Planner agent returned text of length %d", len(result))
+    return result
 
 
 def run_story_generator(safe_request: str, story_plan: str) -> str:
@@ -120,7 +148,10 @@ STORY_PLAN:
 
 Now write the full story.
 """
-    return call_model(prompt, max_tokens=1200, temperature=0.7).strip()
+    logger.info("Calling Story Generator agent")
+    result = call_model(prompt, max_tokens=1200, temperature=0.7).strip()
+    logger.info("Story Generator agent returned text of length %d", len(result))
+    return result
 
 
 def run_judge(safe_request: str, story_plan: str, story: str) -> Tuple[float, str]:
@@ -159,7 +190,9 @@ STORY_PLAN:
 STORY:
 {story}
 """
+    logger.info("Calling Judge agent")
     judge_output = call_model(prompt, max_tokens=500, temperature=0.2).strip()
+    logger.info("Judge agent returned text of length %d", len(judge_output))
 
     # Parse overall score from the judge's output.
     score_match = re.search(r"OVERALL_SCORE:\s*([0-9]+(?:\.[0-9]+)?)", judge_output)
@@ -167,8 +200,10 @@ STORY:
         score = float(score_match.group(1))
     else:
         # Fallback if parsing fails; be conservative.
+        logger.info("Could not parse judge score, defaulting to 0.0")
         score = 0.0
 
+    logger.info("Parsed judge score: %.2f", score)
     return score, judge_output
 
 
@@ -210,7 +245,10 @@ CURRENT_STORY:
 JUDGE_FEEDBACK:
 {judge_feedback}
 """
-    return call_model(prompt, max_tokens=1200, temperature=0.6).strip()
+    logger.info("Calling Refinement agent")
+    result = call_model(prompt, max_tokens=1200, temperature=0.6).strip()
+    logger.info("Refinement agent returned text of length %d", len(result))
+    return result
 
 
 def generate_bedtime_story(user_request: str, min_score: float = 8.5, max_iterations: int = 2) -> str:

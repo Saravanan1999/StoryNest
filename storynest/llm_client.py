@@ -1,8 +1,16 @@
+import logging
 import os
 from typing import Any, Dict
 
 from dotenv import load_dotenv
 import openai
+
+
+logger = logging.getLogger(__name__)
+
+
+class LLMClientError(Exception):
+    """Raised when the underlying LLM call fails."""
 
 
 def _setup_openai() -> None:
@@ -39,10 +47,15 @@ def call_model(
     if extra_args:
         kwargs.update(extra_args)
 
-    resp = openai.ChatCompletion.create(**kwargs)
+    try:
+        resp = openai.ChatCompletion.create(**kwargs)
+    except openai.error.OpenAIError as exc:  # type: ignore[attr-defined]
+        logger.error("LLM call failed: %s", exc)
+        raise LLMClientError("Failed to call language model") from exc
+
     return resp.choices[0].message["content"]  # type: ignore[return-value]
 
 
-__all__ = ["call_model"]
+__all__ = ["call_model", "LLMClientError"]
 
 
