@@ -1,33 +1,7 @@
-import os
 import re
 from typing import Tuple
 
-from dotenv import load_dotenv
-import openai
-
-
-def _setup_openai() -> None:
-    """Load environment variables and configure the OpenAI client."""
-    load_dotenv()
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-
-
-def call_model(prompt: str, max_tokens: int = 900, temperature: float = 0.3) -> str:
-    """
-    Thin wrapper around the OpenAI ChatCompletion API.
-
-    We keep this simple and model-agnostic so other helpers can
-    focus on prompt design and orchestration.
-    """
-    _setup_openai()
-    resp = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",  # required by the assignment
-        messages=[{"role": "user", "content": prompt}],
-        stream=False,
-        max_tokens=max_tokens,
-        temperature=temperature,
-    )
-    return resp.choices[0].message["content"]  # type: ignore[return-value]
+from .llm_client import call_model
 
 
 class StoryNest:
