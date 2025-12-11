@@ -122,7 +122,3 @@ To see file-by-file coverage for the `storynest` package and `main.py`:
 pytest --cov=storynest --cov=main --cov-report=term-missing
 ```
 
-
-## Next steps (for the assignment)
-
-Before submitting the assignment, fill in the comment block at the top of `main.py` with a brief description of what you would have built next if you had 2 more hours to work on this project.
