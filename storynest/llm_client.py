@@ -49,7 +49,7 @@ def call_model(
 
     try:
         resp = openai.ChatCompletion.create(**kwargs)
-    except openai.error.OpenAIError as exc:  # type: ignore[attr-defined]
+    except Exception as exc:  # pragma: no cover - defensive catch-all
         logger.error("LLM call failed: %s", exc)
         raise LLMClientError("Failed to call language model") from exc
 

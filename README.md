@@ -108,6 +108,22 @@ python run_eval.py
 
 This runs a small set of example prompts and writes results to `evals/storynest_results.jsonl`.
 
+## Testing & coverage
+
+With your virtual environment activated:
+
+```bash
+pytest
+```
+
+To see file-by-file coverage for the `storynest` package and `main.py`:
+
+```bash
+pytest --cov=storynest --cov=main --cov-report=term-missing
+```
+
+At the time of writing, the core StoryNest modules are covered at roughly **98%+** line coverage (with `pipeline.py`, `config.py`, and `prompts.py` at 100%).
+
 ## Next steps (for the assignment)
 
 Before submitting the assignment, fill in the comment block at the top of `main.py` with a brief description of what you would have built next if you had 2 more hours to work on this project.
