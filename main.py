@@ -8,7 +8,7 @@ Right now, the project is a single-turn story generator. There are several impro
 - Add a pluggable LLM backend interface (real OpenAI vs. deterministic fake) so the same StoryNest pipeline can be run in CI without network calls, making it easy to have fast, fully offline tests that validate orchestration, logging, and metrics behavior.
 - Wrap generate_bedtime_story in a minimal FastAPI/Flask endpoints to allow for easy deployment and integration with other applications.
 - Add an adversarial ‘jailbreak’ stress-test suite of dark/edge-case prompts to systematically probe and harden the SafetyGuard and Judge prompts.
-
+My goal with StoryNest would be to evolve it from a prototype into a production-ready agent: hardened by adversarial evals, guarded by clear safety prompts, and deployed behind a small service with metrics-driven iteration. Apart from this my next step would be to layer on a lightweight frontend (even a simple web dashboard) so non-technical users can generate stories, inspect safety/eval metrics, and compare prompt/config experiments without touching code.
 """
 
 import logging
