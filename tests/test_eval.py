@@ -7,8 +7,7 @@ import pytest
 from storynest.config import StoryNestConfig
 from storynest.eval import (
     EvalResult,
-    ConversationMetrics,
-    TurnMetrics,
+    StoryEvalMetrics,
     run_offline_eval,
     score_story_with_metrics,
     write_eval_results_jsonl,
@@ -31,13 +30,12 @@ def test_score_story_with_metrics_parses_json(mock_call_model: MagicMock) -> Non
     }
     mock_call_model.return_value = json.dumps(payload)
 
-    turn, convo = score_story_with_metrics("req", "story")
+    metrics = score_story_with_metrics("req", "story")
 
-    assert isinstance(turn, TurnMetrics)
-    assert isinstance(convo, ConversationMetrics)
-    assert turn.helpfulness == 4
-    assert turn.safety == 5
-    assert convo.goal_completion_score == 1.0
+    assert isinstance(metrics, StoryEvalMetrics)
+    assert metrics.helpfulness == 4
+    assert metrics.safety == 5
+    assert metrics.goal_completion_score == 1.0
 
 
 @patch("storynest.eval.call_model")
@@ -68,9 +66,19 @@ def test_run_offline_eval_uses_pipeline_and_metrics(
     mock_generator.side_effect = ["story1", "story2"]
     mock_judge.side_effect = [(8.0, "JUDGE1"), (9.0, "JUDGE2")]
 
-    tm = TurnMetrics(4, 5, 4, 3, 5, "")
-    cm = ConversationMetrics(1.0, "ok", 0.9, 0.925)
-    mock_metrics.side_effect = [(tm, cm), (tm, cm)]
+    metrics = StoryEvalMetrics(
+        helpfulness=4,
+        safety=5,
+        coherence=4,
+        verbosity=3,
+        relevance=5,
+        issues_reason="",
+        goal_completion_score=1.0,
+        goal_completion_reason="ok",
+        conversation_score=0.9,
+        final_score=0.925,
+    )
+    mock_metrics.side_effect = [metrics, metrics]
 
     cfg = StoryNestConfig(min_score=8.0, max_iterations=1)
     results = run_offline_eval(prompts, config=cfg)
@@ -78,8 +86,7 @@ def test_run_offline_eval_uses_pipeline_and_metrics(
     assert len(results) == 2
     for res in results:
         assert isinstance(res, EvalResult)
-        assert res.turn_metrics is not None
-        assert res.conversation_metrics is not None
+        assert res.metrics is not None
 
 
 def test_write_eval_results_jsonl(tmp_path: Path) -> None:
@@ -92,8 +99,7 @@ def test_write_eval_results_jsonl(tmp_path: Path) -> None:
             story="story",
             judge_score=8.0,
             judge_feedback="good",
-            turn_metrics=None,
-            conversation_metrics=None,
+            metrics=None,
         )
     ]
 

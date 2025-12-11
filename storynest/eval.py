@@ -22,20 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class TurnMetrics:
+class StoryEvalMetrics:
     """
-    Per-turn evaluation metrics for a single story.
+    Combined evaluation metrics for a single generated story.
 
-    For this storytelling use case we focus on:
-    - helpfulness: how well the story matches the request
-    - safety: age-appropriateness and lack of unsafe content
-    - coherence: structure and clarity
-    - verbosity: length appropriateness (1 = succinct/appropriate, 5 = too long)
-    - relevance: how well it stays on topic
-
-    We also capture a free-text issues_reason instead of predefined failure categories.
+    Because this system is single-turn (one request → one story), we fold
+    both per-turn and conversation-level metrics into one object.
     """
 
+    # Per-turn style metrics
     helpfulness: int
     safety: int
     coherence: int
@@ -43,9 +38,7 @@ class TurnMetrics:
     relevance: int
     issues_reason: str
 
-
-@dataclass
-class ConversationMetrics:
+    # Conversation-level style metrics (for extensibility / future multi-turn use)
     goal_completion_score: float
     goal_completion_reason: str
     conversation_score: float
@@ -60,8 +53,7 @@ class EvalResult:
     story: str
     judge_score: float
     judge_feedback: str
-    turn_metrics: TurnMetrics | None = None
-    conversation_metrics: ConversationMetrics | None = None
+    metrics: StoryEvalMetrics | None = None
 
 
 def _build_metrics_prompt(user_request: str, story: str) -> str:
@@ -112,7 +104,7 @@ STORY:
 """
 
 
-def score_story_with_metrics(user_request: str, story: str) -> Tuple[TurnMetrics, ConversationMetrics]:
+def score_story_with_metrics(user_request: str, story: str) -> StoryEvalMetrics:
     """
     Use the LLM to score a story using structured per-turn and conversation-level metrics.
     """
@@ -126,23 +118,18 @@ def score_story_with_metrics(user_request: str, story: str) -> Tuple[TurnMetrics
         logger.error("Failed to parse metrics JSON: %s; raw output: %r", exc, raw)
         raise
 
-    turn = TurnMetrics(
+    return StoryEvalMetrics(
         helpfulness=int(data["helpfulness"]),
         safety=int(data["safety"]),
         coherence=int(data["coherence"]),
         verbosity=int(data["verbosity"]),
         relevance=int(data["relevance"]),
         issues_reason=str(data.get("issues_reason", "")).strip(),
-    )
-
-    convo = ConversationMetrics(
         goal_completion_score=float(data["goal_completion_score"]),
         goal_completion_reason=str(data["goal_completion_reason"]),
         conversation_score=float(data["conversation_score"]),
         final_score=float(data["final_score"]),
     )
-
-    return turn, convo
 
 
 def run_offline_eval(
@@ -166,30 +153,25 @@ def run_offline_eval(
 
         # Optional richer evaluation metrics based on the final story.
         try:
-            turn_metrics, convo_metrics = score_story_with_metrics(raw_prompt, story)
+            metrics = score_story_with_metrics(raw_prompt, story)
             logger.info(
-                "Turn metrics for prompt %r - helpfulness=%d, safety=%d, coherence=%d, "
-                "verbosity=%d, relevance=%d, issues_reason=%s",
+                "Metrics for prompt %r - helpfulness=%d, safety=%d, coherence=%d, "
+                "verbosity=%d, relevance=%d, issues_reason=%s, "
+                "goal_completion=%.2f, conversation_score=%.2f, final_score=%.2f",
                 raw_prompt,
-                turn_metrics.helpfulness,
-                turn_metrics.safety,
-                turn_metrics.coherence,
-                turn_metrics.verbosity,
-                turn_metrics.relevance,
-                (turn_metrics.issues_reason or "none"),
-            )
-            logger.info(
-                "Conversation metrics for prompt %r - goal_completion=%.2f, conversation_score=%.2f, "
-                "final_score=%.2f",
-                raw_prompt,
-                convo_metrics.goal_completion_score,
-                convo_metrics.conversation_score,
-                convo_metrics.final_score,
+                metrics.helpfulness,
+                metrics.safety,
+                metrics.coherence,
+                metrics.verbosity,
+                metrics.relevance,
+                (metrics.issues_reason or "none"),
+                metrics.goal_completion_score,
+                metrics.conversation_score,
+                metrics.final_score,
             )
         except Exception as exc:  # pragma: no cover - defensive logging
             logger.warning("Rich metrics evaluation failed: %s", exc)
-            turn_metrics = None
-            convo_metrics = None
+            metrics = None
 
         results.append(
             EvalResult(
@@ -199,8 +181,7 @@ def run_offline_eval(
                 story=story,
                 judge_score=score,
                 judge_feedback=judge_output,
-                turn_metrics=turn_metrics,
-                conversation_metrics=convo_metrics,
+                metrics=metrics,
             )
         )
 
@@ -222,8 +203,7 @@ def write_eval_results_jsonl(results: Iterable[EvalResult], path: str | Path) ->
 
 
 __all__ = [
-    "TurnMetrics",
-    "ConversationMetrics",
+    "StoryEvalMetrics",
     "EvalResult",
     "score_story_with_metrics",
     "run_offline_eval",
